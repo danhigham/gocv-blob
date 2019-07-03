@@ -48,7 +48,7 @@ func (bt *Blobies) MatchToExisting(rects []image.Rectangle) {
 		var minDistance = 200000.0
 		for j := range (*bt).Objects {
 			if bt.Objects[j].isStillBeingTracked == true {
-				dist := distanceBetweenPoints(blobies[i].GetLastPoint(), (*bt).Objects[j].PredictedNextPosition)
+				dist := distanceBetweenPoints(blobies[i].GetLastPoint().Point, (*bt).Objects[j].PredictedNextPosition)
 				if dist < minDistance {
 					minDistance = dist
 					minIndex = j
@@ -107,7 +107,7 @@ func (b *Blobie) DrawTrack(mat *gocv.Mat, optionalText string) {
 	gocv.Rectangle(mat, (*b).CurrentRect, color.RGBA{255, 255, 0, 0}, 2)
 	if (*b).isStillBeingTracked {
 		for i := range (*b).Track {
-			gocv.Circle(mat, (*b).Track[i], 4, color.RGBA{255, 0, 0, 0}, 1)
+			gocv.Circle(mat, (*b).Track[i].Point, 4, color.RGBA{255, 0, 0, 0}, 1)
 		}
 		pt := image.Pt((*b).CurrentRect.Min.X, (*b).CurrentRect.Min.Y)
 		gocv.PutText(mat, optionalText, pt, gocv.FontHersheyPlain, 1.2, color.RGBA{0, 255, 0, 0}, 2)
@@ -121,12 +121,12 @@ func (b *Blobie) IsCrossedTheLine(horizontal int, direction bool) bool {
 		prevFrame := trackLen - 2
 		currFrame := trackLen - 1
 		if direction {
-			if b.Track[prevFrame].Y <= horizontal && b.Track[currFrame].Y > horizontal { // TO us
+			if b.Track[prevFrame].Point.Y <= horizontal && b.Track[currFrame].Point.Y > horizontal { // TO us
 				b.crossedLine = true
 				return true
 			}
 		} else {
-			if b.Track[prevFrame].Y > horizontal && b.Track[currFrame].Y <= horizontal { // FROM us
+			if b.Track[prevFrame].Point.Y > horizontal && b.Track[currFrame].Point.Y <= horizontal { // FROM us
 				b.crossedLine = true
 				return true
 			}

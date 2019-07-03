@@ -9,6 +9,7 @@ import (
 // CentroidTracker - See ref. https://www.pyimagesearch.com/2018/07/23/simple-object-tracking-with-opencv/
 type CentroidTracker struct {
 	Objects              map[uuid.UUID]*Blobie
+	NewObjects           []uuid.UUID
 	maxNoMatch           int
 	minThresholdDistance float64
 	maxPointsInTrack     int
@@ -48,6 +49,7 @@ func (ct *CentroidTracker) Register(b ...*Blobie) error {
 			return err
 		}
 		ct.Objects[newUUID] = b[i]
+		ct.NewObjects = append(ct.NewObjects, newUUID)
 	}
 	return nil
 }
@@ -59,6 +61,8 @@ func (ct *CentroidTracker) deregister(guid uuid.UUID) {
 
 // Update - Update blobs in tracker. See ref. https://www.pyimagesearch.com/2018/07/23/simple-object-tracking-with-opencv/
 func (ct *CentroidTracker) Update(rects []image.Rectangle) map[uuid.UUID]*Blobie {
+	ct.NewObjects = []uuid.UUID{}
+
 	if len(rects) == 0 {
 		ct.allDisappear()
 		return ct.Objects
@@ -93,8 +97,9 @@ func (ct *CentroidTracker) Update(rects []image.Rectangle) map[uuid.UUID]*Blobie
 			continue
 		}
 		blobies[minIdx].isExists = true
-		ct.Objects[i] = blobies[minIdx]
+		// ct.Objects[i] = blobies[minIdx]
 		ct.Objects[i].noMatchTimes = 0
+		ct.Objects[i].Update(*blobies[minIdx])
 	}
 
 	for i := range blobies {

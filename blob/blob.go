@@ -3,9 +3,22 @@ package blob
 import (
 	"image"
 	"math"
+	"time"
 
 	uuid "github.com/satori/go.uuid"
 )
+
+type TrackPoint struct {
+	Point   image.Point
+	Created time.Time
+}
+
+func NewTrackPoint(point image.Point) TrackPoint {
+	return TrackPoint{
+		Created: time.Now(),
+		Point:   point,
+	}
+}
 
 // Blobie - Main blob structure
 type Blobie struct {
@@ -15,13 +28,13 @@ type Blobie struct {
 	Area                  float64
 	Diagonal              float64
 	AspectRatio           float64
-	Track                 []image.Point
+	Track                 []TrackPoint
+	MosseTrack            []TrackPoint
 	maxPointsInTrack      int
 	isExists              bool
 	isStillBeingTracked   bool
 	noMatchTimes          int
 	PredictedNextPosition image.Point
-
 	// For array tracker
 	crossedLine bool
 }
@@ -37,7 +50,7 @@ func NewBlobie(rect image.Rectangle, maxPointsInTrack int) *Blobie {
 		Area:                width * height,
 		Diagonal:            math.Sqrt(math.Pow(width, 2) + math.Pow(height, 2)),
 		AspectRatio:         width / height,
-		Track:               []image.Point{center},
+		Track:               []TrackPoint{NewTrackPoint(center)},
 		maxPointsInTrack:    maxPointsInTrack,
 		isExists:            true,
 		isStillBeingTracked: true,
@@ -62,7 +75,7 @@ func NewBlobieDefaults(rect image.Rectangle) *Blobie {
 		Area:                width * height,
 		Diagonal:            math.Sqrt(math.Pow(width, 2) + math.Pow(height, 2)),
 		AspectRatio:         width / height,
-		Track:               []image.Point{center},
+		Track:               []TrackPoint{NewTrackPoint(center)},
 		maxPointsInTrack:    10,
 		isExists:            true,
 		isStillBeingTracked: true,
@@ -70,6 +83,15 @@ func NewBlobieDefaults(rect image.Rectangle) *Blobie {
 
 		crossedLine: false,
 	}
+}
+
+func (b *Blobie) SpaceTimeTravelled() (float64, time.Duration) {
+	lastPoint := b.GetLastPoint()
+	firstPoint := b.Track[0]
+
+	distance := distanceBetweenPoints(firstPoint.Point, lastPoint.Point)
+	timeTaken := lastPoint.Created.Sub(firstPoint.Created)
+	return distance, timeTaken
 }
 
 // Update - Update info about blob
@@ -82,7 +104,7 @@ func (b *Blobie) Update(newb Blobie) {
 	b.isStillBeingTracked = true
 	b.isExists = true
 	// Append new point to track
-	b.Track = append(b.Track, newb.Center)
+	b.Track = append(b.Track, NewTrackPoint(newb.Center))
 	// Restrict number of points in track (shift to the left)
 	if len(b.Track) > b.maxPointsInTrack {
 		// b.Track = b.Track[1:]
@@ -90,8 +112,12 @@ func (b *Blobie) Update(newb Blobie) {
 }
 
 // GetLastPoint - Return last point from blob's track
-func (b *Blobie) GetLastPoint() image.Point {
+func (b *Blobie) GetLastPoint() TrackPoint {
 	return b.Track[len(b.Track)-1]
+}
+
+func (b *Blobie) UpdateLastPoint(pt image.Point) {
+	b.Track[len(b.Track)-1].Point = pt
 }
 
 // PredictNextPosition - Predict next N coordinates
@@ -101,16 +127,16 @@ func (b *Blobie) PredictNextPosition(n int) {
 	current := prev - 1
 	var deltaX, deltaY, sum int = 0, 0, 0
 	for i := 1; i < int(account); i++ {
-		deltaX += (((*b).Track)[current].X - ((*b).Track)[prev].X) * i
-		deltaY += (((*b).Track)[current].Y - ((*b).Track)[prev].Y) * i
+		deltaX += (((*b).Track)[current].Point.X - ((*b).Track)[prev].Point.X) * i
+		deltaY += (((*b).Track)[current].Point.Y - ((*b).Track)[prev].Point.Y) * i
 		sum += i
 	}
 	if sum > 0 {
 		deltaX /= sum
 		deltaY /= sum
 	}
-	(*b).PredictedNextPosition.X = (*b).Track[len((*b).Track)-1].X + deltaX
-	(*b).PredictedNextPosition.Y = (*b).Track[len((*b).Track)-1].Y + deltaY
+	(*b).PredictedNextPosition.X = (*b).Track[len((*b).Track)-1].Point.X + deltaX
+	(*b).PredictedNextPosition.Y = (*b).Track[len((*b).Track)-1].Point.Y + deltaY
 }
 
 // // IsCrossedTheLine - Check if blob crossed the HORIZONTAL line
